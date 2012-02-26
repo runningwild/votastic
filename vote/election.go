@@ -6,13 +6,15 @@ import (
   "appengine/user"
   "fmt"
   "net/http"
-  "strings"
   "strconv"
+  "strings"
+  "time"
 )
 
 func init() {
   http.HandleFunc("/election", basicHtmlWrapper(election))
-  http.HandleFunc("/make_election", basicHtmlWrapper(makeElection))
+  http.HandleFunc("/make_election", makeElection)
+  http.HandleFunc("/view_election", basicHtmlWrapper(viewElection))
 }
 
 type Candidate struct {
@@ -24,6 +26,9 @@ type Candidate struct {
 type Election struct {
   // user.User.ID of the user that created this election.
   User_id string
+
+  // Time when the election was created.
+  Time time.Time
 
   Title string
   Text  string
@@ -149,20 +154,43 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
       Name: name,
     }
     cands = append(cands, cand)
-    fmt.Fprintf(w, "%d: %s<br/>", i, name)
+    // fmt.Fprintf(w, "%d: %s<br/>", i, name)
   }
   e := Election{
     Title: r.FormValue("title"),
     Candidates: cands,
+    Time: time.Now(),
   }
 
   // We've created the element that we're going to add, now go ahead and add it
   // TODO: Need to make sure the name of the election doesn't conflict with an
   // existing election.
-  _, err := datastore.Put(c, datastore.NewIncompleteKey(c, "Election", nil), &e)
+  key, err := datastore.Put(c, datastore.NewIncompleteKey(c, "Election", nil), &e)
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
-  http.Redirect(w, r, "/", http.StatusFound)
+  // fmt.Fprintf(w, "Before<br>")
+  http.Redirect(w, r, fmt.Sprintf("/view_election?key=%s", key.Encode()), http.StatusFound)
+  // fmt.Fprintf(w, "After<br>")
+}
+
+func viewElection(w http.ResponseWriter, r *http.Request) {
+  key, err := datastore.DecodeKey(r.FormValue("key"))
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+  fmt.Fprintf(w, "RAWR (%s)!!!<br>", key.Encode())
+  c := appengine.NewContext(r)
+  var e Election
+  err = datastore.Get(c, key, &e)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+  fmt.Fprintf(w, "Election: %s<br>", e.Title)
+  for i := range e.Candidates {
+    fmt.Fprintf(w, "Candidate(%d): %s<br>", i, e.Candidates[i].Name)
+  }
 }

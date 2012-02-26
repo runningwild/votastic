@@ -44,6 +44,7 @@ func init() {
 }
 
 func root(w http.ResponseWriter, r *http.Request) {
+  fmt.Fprintf(w, "ROOT<br>")
     c := appengine.NewContext(r)
     q := datastore.NewQuery("Election")
     elections := make([]Election, 0, 10)
