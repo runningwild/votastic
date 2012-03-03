@@ -24,7 +24,12 @@ type Candidate struct {
 }
 
 type Election struct {
-  // user.User.ID of the user that created this election.
+  // key.Encode() for the key representing this Election.  This is here so
+  // that we can embed it into forms easily.  This isn't saved into the DB,
+  // it's just there so that we can set it before executing templates.
+  Key_str string
+
+  // User.ID of the user that created this election.
   User_id string
 
   // Time when the election was created.
@@ -126,7 +131,7 @@ var election_html string = `
 `
 
 func election(w http.ResponseWriter, r *http.Request) {
-  if requireLogin(w, r) {
+  if _,_,logged_in := promptLogin(w, r); logged_in {
     fmt.Fprintf(w, election_html)
   } else {
     fmt.Fprintf(w, "Nubcake<br>")
@@ -150,6 +155,9 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
   var cands []Candidate
   for i := 0; i <= 5; i++ {
     name := r.FormValue(fmt.Sprintf("cand%d", i))
+    if name == "" {
+      continue
+    }
     cand := Candidate{
       Name: name,
     }
@@ -157,6 +165,7 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
     // fmt.Fprintf(w, "%d: %s<br/>", i, name)
   }
   e := Election{
+    User_id: u.ID,
     Title: r.FormValue("title"),
     Candidates: cands,
     Time: time.Now(),
@@ -170,9 +179,8 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
-  // fmt.Fprintf(w, "Before<br>")
+
   http.Redirect(w, r, fmt.Sprintf("/view_election?key=%s", key.Encode()), http.StatusFound)
-  // fmt.Fprintf(w, "After<br>")
 }
 
 func viewElection(w http.ResponseWriter, r *http.Request) {
@@ -193,4 +201,5 @@ func viewElection(w http.ResponseWriter, r *http.Request) {
   for i := range e.Candidates {
     fmt.Fprintf(w, "Candidate(%d): %s<br>", i, e.Candidates[i].Name)
   }
+  fmt.Fprintf(w, "<a href=\"/ballot?key=%s\">Cast your vote here!</a>", key.Encode())
 }

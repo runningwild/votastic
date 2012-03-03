@@ -1,4 +1,4 @@
-application: helloworld
+application: votastic
 version: 1
 runtime: go
 api_version: go1beta
