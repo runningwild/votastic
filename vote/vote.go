@@ -6,6 +6,7 @@ import (
   "appengine/user"
   "fmt"
   "net/http"
+  "html/template"
 )
 
 func basicHtmlWrapper(handler http.HandlerFunc) http.HandlerFunc {
@@ -17,28 +18,42 @@ func basicHtmlWrapper(handler http.HandlerFunc) http.HandlerFunc {
 }
 
 func init() {
-    http.HandleFunc("/", basicHtmlWrapper(root))
-    http.HandleFunc("/show", basicHtmlWrapper(show))
+  http.HandleFunc("/", basicHtmlWrapper(root))
+  http.HandleFunc("/show", basicHtmlWrapper(show))
 }
 
+var availableElectionTemplate = template.Must(template.New("available_elections").Parse(availableElectionTemplateHTML))
+const availableElectionTemplateHTML = `
+  <html><body>
+  <table>
+    {{range .}}
+      <tr>
+        <td>{{.Title}}</td>
+        <td><a href="/ballot?key={{.Key_str}}">vote</a></td>
+        <td><a href="/view_results?key={{.Key_str}}">results</a></td>
+      </tr>
+    {{end}}
+  </table>
+  </body></html>
+`
+
 func root(w http.ResponseWriter, r *http.Request) {
-  fmt.Fprintf(w, "ROOT<br>")
-    c := appengine.NewContext(r)
-    q := datastore.NewQuery("Election")
-    elections := make([]Election, 0, 10)
-    if _, err := q.GetAll(c, &elections); err != nil {
-      fmt.Fprintf(w, "Error: %s<br>", err.Error())
+  c := appengine.NewContext(r)
+  q := datastore.NewQuery("Election")
+  elections := make([]Election, 0, 10)
+  if _, err := q.GetAll(c, &elections); err != nil {
+    fmt.Fprintf(w, "Error: %s<br>", err.Error())
+    return
+      http.Error(w, err.Error(), http.StatusInternalServerError)
       return
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    for i := range elections {
-      fmt.Fprintf(w, "election(%d): %s<br>", i, elections[i].Title)
-      cands,_ := elections[i].GetCandidates(c)
-      for j := range cands {
-        fmt.Fprintf(w, "candidate(%d): %s<br>", j, cands[j].Name)
-      }
-    }
+  }
+  err := availableElectionTemplate.Execute(w, elections)
+  if err != nil {
+    fmt.Fprintf(w, "Error: %s<br>", err.Error())
+    return
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
 }
 
 
