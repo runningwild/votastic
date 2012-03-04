@@ -5,8 +5,8 @@ import (
   "appengine/datastore"
   "appengine/user"
   "fmt"
-  "net/http"
   "html/template"
+  "net/http"
 )
 
 func basicHtmlWrapper(handler http.HandlerFunc) http.HandlerFunc {
@@ -23,6 +23,7 @@ func init() {
 }
 
 var availableElectionTemplate = template.Must(template.New("available_elections").Parse(availableElectionTemplateHTML))
+
 const availableElectionTemplateHTML = `
   <html><body>
   <table>
@@ -44,8 +45,8 @@ func root(w http.ResponseWriter, r *http.Request) {
   if _, err := q.GetAll(c, &elections); err != nil {
     fmt.Fprintf(w, "Error: %s<br>", err.Error())
     return
-      http.Error(w, err.Error(), http.StatusInternalServerError)
-      return
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
   }
   err := availableElectionTemplate.Execute(w, elections)
   if err != nil {
@@ -55,7 +56,6 @@ func root(w http.ResponseWriter, r *http.Request) {
     return
   }
 }
-
 
 func show(w http.ResponseWriter, r *http.Request) {
   c := appengine.NewContext(r)
@@ -74,7 +74,7 @@ func promptLogin(w http.ResponseWriter, r *http.Request) (appengine.Context, *us
   c := appengine.NewContext(r)
   u := user.Current(c)
   if u == nil {
-    url,err := user.LoginURL(c, r.URL.String())
+    url, err := user.LoginURL(c, r.URL.String())
     if err != nil {
       http.Error(w, err.Error(), http.StatusInternalServerError)
       return nil, nil, false
@@ -82,7 +82,7 @@ func promptLogin(w http.ResponseWriter, r *http.Request) (appengine.Context, *us
     fmt.Fprintf(w, `<a href="%s">Sign in or register</a><br>`, url)
     return nil, nil, false
   }
-  url,err := user.LogoutURL(c, "/")
+  url, err := user.LogoutURL(c, "/")
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return c, u, true

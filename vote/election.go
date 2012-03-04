@@ -52,6 +52,7 @@ type Election struct {
 type electionError struct {
   msg string
 }
+
 func (ee *electionError) Error() string {
   return ee.msg
 }
@@ -69,7 +70,7 @@ func (e *Election) GetCandidates(c appengine.Context) ([]Candidate, error) {
     cands = append(cands, cand)
   }
   if len(cands) != e.Num_candidates {
-    return nil, &electionError{ fmt.Sprintf("Expected %d candidates, found %d.", e.Num_candidates, len(cands)) }
+    return nil, &electionError{fmt.Sprintf("Expected %d candidates, found %d.", e.Num_candidates, len(cands))}
   }
   return cands, nil
 }
@@ -95,7 +96,7 @@ var election_html string = `
 `
 
 func election(w http.ResponseWriter, r *http.Request) {
-  if _,_,logged_in := promptLogin(w, r); logged_in {
+  if _, _, logged_in := promptLogin(w, r); logged_in {
     fmt.Fprintf(w, election_html)
   } else {
     fmt.Fprintf(w, "Nubcake<br>")
@@ -107,7 +108,7 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
   u := user.Current(c)
   if u == nil {
     // Can't create the election without logging in first
-    url,err := user.LoginURL(c, r.URL.String())
+    url, err := user.LoginURL(c, r.URL.String())
     if err != nil {
       http.Error(w, err.Error(), http.StatusInternalServerError)
       return
@@ -133,21 +134,21 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
   var refresh int64
   refresh_str := r.FormValue(fmt.Sprintf("refresh"))
   switch refresh_str {
-    case "1minute":
-      refresh = 60*1000*1000*1000
-    case "10minute":
-      refresh = 10*60*1000*1000*1000
-    case "hour":
-      refresh = 60*60*1000*1000*1000
-    case "day":
-      refresh = 24*60*60*1000*1000*1000
-    default:
-      http.Error(w, fmt.Sprintf("Unknown refresh interval: '%s'", refresh_str), http.StatusInternalServerError)
-      return
+  case "1minute":
+    refresh = 60 * 1000 * 1000 * 1000
+  case "10minute":
+    refresh = 10 * 60 * 1000 * 1000 * 1000
+  case "hour":
+    refresh = 60 * 60 * 1000 * 1000 * 1000
+  case "day":
+    refresh = 24 * 60 * 60 * 1000 * 1000 * 1000
+  default:
+    http.Error(w, fmt.Sprintf("Unknown refresh interval: '%s'", refresh_str), http.StatusInternalServerError)
+    return
   }
 
   e := Election{
-    User_id: u.ID,
+    User_id:          u.ID,
     Title:            r.FormValue("title"),
     Time:             time.Now(),
     Num_candidates:   len(cands),
