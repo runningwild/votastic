@@ -38,6 +38,11 @@ type Election struct {
   // Time when the election was created.
   Time time.Time
 
+  // How often the results are updated.  Also indicates how long it might be
+  // until a ballot is visible, it could be anywhere from 2 to 3 times the
+  // interval.  The value is given in nanoseconds.
+  Refresh_interval int64
+
   Title string
   Text  string
 
@@ -119,9 +124,10 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
   }
   e := Election{
     User_id: u.ID,
-    Title:          r.FormValue("title"),
-    Time:           time.Now(),
-    Num_candidates: len(cands),
+    Title:            r.FormValue("title"),
+    Time:             time.Now(),
+    Num_candidates:   len(cands),
+    Refresh_interval: 1000*1000*1000*60,  // 1 minute
   }
 
   // We've created the element that we're going to add, now go ahead and add it
