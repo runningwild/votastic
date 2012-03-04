@@ -77,6 +77,13 @@ func (e *Election) GetCandidates(c appengine.Context) ([]Candidate, error) {
 var election_html string = `
   <form action="/make_election" method="post">
     Election name: <input type="text" name="title"/><br/>
+    Refresh interval:
+    <select name="refresh">
+    <option value="1minute">1 Minute</option>
+    <option value="10minute">10 Minutes</option>
+    <option value="hour">1 Hour</option>
+    <option value="day">1 Day</option>
+    </select><br/>
     Candidate name: <input type="text" name="cand0"/><br/>
     Candidate name: <input type="text" name="cand1"/><br/>
     Candidate name: <input type="text" name="cand2"/><br/>
@@ -122,12 +129,29 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
     cands = append(cands, cand)
     // fmt.Fprintf(w, "%d: %s<br/>", i, name)
   }
+
+  var refresh int64
+  refresh_str := r.FormValue(fmt.Sprintf("refresh"))
+  switch refresh_str {
+    case "1minute":
+      refresh = 60*1000*1000*1000
+    case "10minute":
+      refresh = 10*60*1000*1000*1000
+    case "hour":
+      refresh = 60*60*1000*1000*1000
+    case "day":
+      refresh = 24*60*60*1000*1000*1000
+    default:
+      http.Error(w, fmt.Sprintf("Unknown refresh interval: '%s'", refresh_str), http.StatusInternalServerError)
+      return
+  }
+
   e := Election{
     User_id: u.ID,
     Title:            r.FormValue("title"),
     Time:             time.Now(),
     Num_candidates:   len(cands),
-    Refresh_interval: 1000*1000*1000*60,  // 1 minute
+    Refresh_interval: refresh,
   }
 
   // We've created the element that we're going to add, now go ahead and add it
