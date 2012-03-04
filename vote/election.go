@@ -6,8 +6,6 @@ import (
   "appengine/user"
   "fmt"
   "net/http"
-  "strconv"
-  "strings"
   "time"
 )
 
@@ -17,10 +15,15 @@ func init() {
   http.HandleFunc("/view_election", basicHtmlWrapper(viewElection))
 }
 
+// The parent of a Candidate is the Election it is part of.
 type Candidate struct {
   Name  string
   Blurb string
   Image []byte
+
+  // Index is just so that we have a well-defined ordering among Candidates,
+  // independent of anything the datastore does.
+  Index int
 }
 
 type Election struct {
@@ -38,83 +41,32 @@ type Election struct {
   Title string
   Text  string
 
-  Candidates []Candidate
+  Num_candidates int
 }
 
-func (e *Election) Load(props <-chan datastore.Property) error {
-  defer func() {
-    for _ = range props { }
-  } ()
-  for prop := range props {
-    switch prop.Name {
-    case "User_id":
-      e.User_id = prop.Value.(string)
-
-    case "Title":
-      e.Title = prop.Value.(string)
-
-    case "Text":
-      e.Text = prop.Value.(string)
-
-    default:
-      // All other fields are for individual entries in the Candidates array.
-      // The format is index:property, and we don't know how many there are
-      // ahead of time, so we'll need to make room for them as they show up.
-      parts := strings.Split(prop.Name, ":")
-      index,err := strconv.ParseInt(parts[0], 10, 64)
-      if err != nil {
-        return err
-      }
-      for len(e.Candidates) <= int(index) {
-        e.Candidates = append(e.Candidates, Candidate{})
-      }
-      switch parts[1] {
-      case "Name":
-        e.Candidates[index].Name = prop.Value.(string)
-
-      case "Blurb":
-        e.Candidates[index].Blurb = prop.Value.(string)
-
-      case "Image":
-        e.Candidates[index].Image = prop.Value.([]byte)
-      }
-    }
-  }
-  return nil
+type electionError struct {
+  msg string
+}
+func (ee *electionError) Error() string {
+  return ee.msg
 }
 
-func (e *Election) Save(prop chan<- datastore.Property) error {
-  prop <- datastore.Property{
-    Name: "User_id",
-    Value: e.User_id,
+func (e *Election) GetCandidates(c appengine.Context) ([]Candidate, error) {
+  key, err := datastore.DecodeKey(e.Key_str)
+  if err != nil {
+    return nil, err
   }
-  prop <- datastore.Property{
-    Name: "Title",
-    Value: e.Title,
+  query := datastore.NewQuery("Candidate").Ancestor(key).Order("Index")
+  var cands []Candidate
+  it := query.Run(c)
+  var cand Candidate
+  for _, err := it.Next(&cand); err == nil; _, err = it.Next(&cand) {
+    cands = append(cands, cand)
   }
-  prop <- datastore.Property{
-    Name: "Text",
-    Value: e.Text,
+  if len(cands) != e.Num_candidates {
+    return nil, &electionError{ fmt.Sprintf("Expected %d candidates, found %d.", e.Num_candidates, len(cands)) }
   }
-  for i := range e.Candidates {
-    prop <- datastore.Property{
-      Name: fmt.Sprintf("%d:Name", i),
-      Value: e.Candidates[i].Name,
-      NoIndex: true,
-    }
-    prop <- datastore.Property{
-      Name: fmt.Sprintf("%d:Blurb", i),
-      Value: e.Candidates[i].Blurb,
-      NoIndex: true,
-    }
-    prop <- datastore.Property{
-      Name: fmt.Sprintf("%d:Image", i),
-      Value: e.Candidates[i].Image,
-      NoIndex: true,
-    }
-  }
-  close(prop)
-  return nil
+  return cands, nil
 }
 
 var election_html string = `
@@ -159,16 +111,17 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
       continue
     }
     cand := Candidate{
-      Name: name,
+      Name:  name,
+      Index: i,
     }
     cands = append(cands, cand)
     // fmt.Fprintf(w, "%d: %s<br/>", i, name)
   }
   e := Election{
     User_id: u.ID,
-    Title: r.FormValue("title"),
-    Candidates: cands,
-    Time: time.Now(),
+    Title:          r.FormValue("title"),
+    Time:           time.Now(),
+    Num_candidates: len(cands),
   }
 
   // We've created the element that we're going to add, now go ahead and add it
@@ -178,6 +131,21 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
+  }
+  e.Key_str = key.Encode()
+  _, err = datastore.Put(c, key, &e)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  // Now we add all of the Candidates as children of the Election
+  for i := range cands {
+    _, err := datastore.Put(c, datastore.NewIncompleteKey(c, "Candidate", key), &cands[i])
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+      return
+    }
   }
 
   http.Redirect(w, r, fmt.Sprintf("/view_election?key=%s", key.Encode()), http.StatusFound)
@@ -198,8 +166,13 @@ func viewElection(w http.ResponseWriter, r *http.Request) {
     return
   }
   fmt.Fprintf(w, "Election: %s<br>", e.Title)
-  for i := range e.Candidates {
-    fmt.Fprintf(w, "Candidate(%d): %s<br>", i, e.Candidates[i].Name)
+  cands, err := e.GetCandidates(c)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+  for i := range cands {
+    fmt.Fprintf(w, "Candidate(%d): %s<br>", i, cands[i].Name)
   }
   fmt.Fprintf(w, "<a href=\"/ballot?key=%s\">Cast your vote here!</a>", key.Encode())
 }

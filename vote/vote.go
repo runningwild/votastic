@@ -34,8 +34,9 @@ func root(w http.ResponseWriter, r *http.Request) {
     }
     for i := range elections {
       fmt.Fprintf(w, "election(%d): %s<br>", i, elections[i].Title)
-      for j := range elections[i].Candidates {
-        fmt.Fprintf(w, "candidate(%d): %s<br>", j, elections[i].Candidates[j].Name)
+      cands,_ := elections[i].GetCandidates(c)
+      for j := range cands {
+        fmt.Fprintf(w, "candidate(%d): %s<br>", j, cands[j].Name)
       }
     }
 }
