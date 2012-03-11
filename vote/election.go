@@ -3,9 +3,11 @@ package vote
 import (
   "appengine"
   "appengine/datastore"
+  "appengine/user"
   "fmt"
   "net/http"
   "time"
+  "strings"
 )
 
 func init() {
@@ -46,6 +48,25 @@ type Election struct {
   Text  string
 
   Num_candidates int
+
+  // List of email addresses of all of the valid voters.  If it is empty then
+  // anyone is allowed to vote.
+  Emails []string
+}
+
+
+func (e *Election) IsUserAllowedToVote(u *user.User) bool {
+  // If the election was not limited to a set of users then it is implicitly
+  // open to everyone.
+  if len(e.Emails) == 0 {
+    return true
+  }
+  for _, email := range e.Emails {
+    if u.Email == email {
+      return true
+    }
+  }
+  return false
 }
 
 type electionError struct {
@@ -90,7 +111,9 @@ var election_html string = `
     Candidate name: <input type="text" name="cand3"/><br/>
     Candidate name: <input type="text" name="cand4"/><br/>
     Candidate name: <input type="text" name="cand5"/><br/>
-    <div><input type="submit" value="W/evs"></div>
+    You may restrict the election to only certain people by entering their email addresses here:</br>
+    <textarea name="emails" cols="70" rows="15"></textarea>
+    <div><input type="submit" value="Begin the Election"></div>
   </form>
 `
 
@@ -103,10 +126,17 @@ func election(w http.ResponseWriter, r *http.Request) {
 }
 
 func makeElection(w http.ResponseWriter, r *http.Request) {
-  htmlWrapBegin(w)
-  defer htmlWrapEnd(w)
-  c, u, logged_in := promptLogin(w, r)
-  if !logged_in {
+  c := appengine.NewContext(r)
+  u := user.Current(c)
+  if u == nil {
+    htmlWrapBegin(w)
+    defer htmlWrapEnd(w)
+    url, err := user.LoginURL(c, r.URL.String())
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+      return
+    }
+    fmt.Fprintf(w, `<a href="%s">Sign in or register</a><br>`, url)
     return
   }
 
@@ -121,7 +151,6 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
       Index: i,
     }
     cands = append(cands, cand)
-    // fmt.Fprintf(w, "%d: %s<br/>", i, name)
   }
 
   var refresh int64
@@ -146,6 +175,7 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
     Time:             time.Now(),
     Num_candidates:   len(cands),
     Refresh_interval: refresh,
+    Emails:           strings.Fields(r.FormValue("emails")),
   }
 
   // We've created the element that we're going to add, now go ahead and add it
@@ -199,5 +229,6 @@ func viewElection(w http.ResponseWriter, r *http.Request) {
   for i := range cands {
     fmt.Fprintf(w, "Candidate(%d): %s<br>", i, cands[i].Name)
   }
+  fmt.Fprintf(w, "Emails(%d): %v<br/>", len(e.Emails), e.Emails)
   fmt.Fprintf(w, "<a href=\"/ballot?key=%s\">Cast your vote here!</a>", key.Encode())
 }

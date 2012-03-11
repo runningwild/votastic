@@ -72,7 +72,7 @@ type electionWithCandidates struct {
 func fillBallot(w http.ResponseWriter, r *http.Request) {
   htmlWrapBegin(w)
   defer htmlWrapEnd(w)
-  c, _, logged_in := promptLogin(w, r)
+  c, u, logged_in := promptLogin(w, r)
   if !logged_in {
     return
   }
@@ -87,6 +87,12 @@ func fillBallot(w http.ResponseWriter, r *http.Request) {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
+
+  if !e.IsUserAllowedToVote(u) {
+    fmt.Fprintf(w, "You have not been listed as a participant in this election.<br/>")
+    return
+  }
+
   cands, err := e.GetCandidates(c)
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
