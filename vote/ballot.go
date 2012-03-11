@@ -39,6 +39,7 @@ var ballotTemplate = template.Must(template.New("ballot").Parse(ballotTemplateHT
 
 const ballotTemplateHTML = `
   <body>
+    {{ $data = .}}
     <form action="/cast_ballot" method="post">
     <input type="text" hidden name="key" value="{{.Key_str}}">
     Election: {{.Title}}<br>
@@ -47,15 +48,9 @@ const ballotTemplateHTML = `
     {{range $index,$element := .Candidates}}
       <tr>
         <td>{{.Name}}</td>
-        <td><input type="radio" name="rank_{{$index}}" value="1" /></td>
-        <td><input type="radio" name="rank_{{$index}}" value="2" /></td>
-        <td><input type="radio" name="rank_{{$index}}" value="3" /></td>
-        <td><input type="radio" name="rank_{{$index}}" value="4" /></td>
-        <td><input type="radio" name="rank_{{$index}}" value="5" /></td>
-        <td><input type="radio" name="rank_{{$index}}" value="6" /></td>
-        <td><input type="radio" name="rank_{{$index}}" value="7" /></td>
-        <td><input type="radio" name="rank_{{$index}}" value="8" /></td>
-        <td><input type="radio" name="rank_{{$index}}" value="9" /></td>
+        {{range $rank_index,$rank := $data.Candidates}}
+          <td><input type="radio" name="rank_{{$index}}" value="{{$rank_index}}" {{if index $data.Ranks $index $rank_index}}checked{{end}} /></td>
+        {{end}}
       </tr>
     {{end}}
     </table>
@@ -67,6 +62,7 @@ const ballotTemplateHTML = `
 type electionWithCandidates struct {
   Election
   Candidates []Candidate
+  Ranks      map[int]map[int]bool
 }
 
 func fillBallot(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +95,27 @@ func fillBallot(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  ballotTemplate.Execute(w, electionWithCandidates{Election: e, Candidates: cands})
+  // Find the last ballot that this user cast on this election so that we can
+  // fill out the fields the way they were filled out last time.
+  query := datastore.NewQuery("Ballot").
+      Ancestor(key).
+      Filter("User_id =", u.ID).
+      Order("-Time").
+      Limit(1)
+  it := query.Run(c)
+  var b Ballot
+  ranks := make(map[int]map[int]bool)
+  for i := range cands {
+    ranks[i] = make(map[int]bool)
+  }
+  _, err = it.Next(&b)
+  if err == nil {
+    for i,v := range b.Ordering {
+      ranks[i][v] = true
+    }
+  }
+
+  ballotTemplate.Execute(w, electionWithCandidates{Election: e, Candidates: cands, Ranks: ranks})
 }
 
 func randN(n int64) (int64, error) {
