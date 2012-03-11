@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-  http.HandleFunc("/ballot",makeBallot)
+  http.HandleFunc("/ballot",fillBallot)
   http.HandleFunc("/cast_ballot", castBallot)
 }
 
@@ -69,13 +69,18 @@ type electionWithCandidates struct {
   Candidates []Candidate
 }
 
-func makeBallot(w http.ResponseWriter, r *http.Request) {
+func fillBallot(w http.ResponseWriter, r *http.Request) {
+  htmlWrapBegin(w)
+  defer htmlWrapEnd(w)
+  c, _, logged_in := promptLogin(w, r)
+  if !logged_in {
+    return
+  }
   key, err := datastore.DecodeKey(r.FormValue("key"))
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
-  c := appengine.NewContext(r)
   var e Election
   err = datastore.Get(c, key, &e)
   if err != nil {

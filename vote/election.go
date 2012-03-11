@@ -3,7 +3,6 @@ package vote
 import (
   "appengine"
   "appengine/datastore"
-  "appengine/user"
   "fmt"
   "net/http"
   "time"
@@ -104,16 +103,10 @@ func election(w http.ResponseWriter, r *http.Request) {
 }
 
 func makeElection(w http.ResponseWriter, r *http.Request) {
-  c := appengine.NewContext(r)
-  u := user.Current(c)
-  if u == nil {
-    // Can't create the election without logging in first
-    url, err := user.LoginURL(c, r.URL.String())
-    if err != nil {
-      http.Error(w, err.Error(), http.StatusInternalServerError)
-      return
-    }
-    fmt.Fprintf(w, `<a href="%s">Sign in or register</a><br>`, url)
+  htmlWrapBegin(w)
+  defer htmlWrapEnd(w)
+  c, u, logged_in := promptLogin(w, r)
+  if !logged_in {
     return
   }
 
