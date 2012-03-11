@@ -10,9 +10,9 @@ import (
 )
 
 func init() {
-  http.HandleFunc("/election", basicHtmlWrapper(election))
+  http.HandleFunc("/election", election)
   http.HandleFunc("/make_election", makeElection)
-  http.HandleFunc("/view_election", basicHtmlWrapper(viewElection))
+  http.HandleFunc("/view_election", viewElection)
 }
 
 // The parent of a Candidate is the Election it is part of.
@@ -96,10 +96,10 @@ var election_html string = `
 `
 
 func election(w http.ResponseWriter, r *http.Request) {
+  htmlWrapBegin(w)
+  defer htmlWrapEnd(w)
   if _, _, logged_in := promptLogin(w, r); logged_in {
     fmt.Fprintf(w, election_html)
-  } else {
-    fmt.Fprintf(w, "Nubcake<br>")
   }
 }
 
@@ -183,12 +183,13 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
 }
 
 func viewElection(w http.ResponseWriter, r *http.Request) {
+  htmlWrapBegin(w)
+  defer htmlWrapEnd(w)
   key, err := datastore.DecodeKey(r.FormValue("key"))
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
-  fmt.Fprintf(w, "RAWR (%s)!!!<br>", key.Encode())
   c := appengine.NewContext(r)
   var e Election
   err = datastore.Get(c, key, &e)

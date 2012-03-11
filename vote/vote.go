@@ -9,23 +9,16 @@ import (
   "net/http"
 )
 
-func basicHtmlWrapper(handler http.HandlerFunc) http.HandlerFunc {
-  return func(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprintf(w, "<html>")
-    handler(w, r)
-    fmt.Fprintf(w, "</html>")
-  }
-}
-
 func init() {
-  http.HandleFunc("/", basicHtmlWrapper(root))
-  http.HandleFunc("/show", basicHtmlWrapper(show))
+  http.HandleFunc("/", root)
+  http.HandleFunc("/show", show)
 }
 
 var availableElectionTemplate = template.Must(template.New("available_elections").Parse(availableElectionTemplateHTML))
 
 const availableElectionTemplateHTML = `
   <html><body>
+  <a href="/election">Create a new Election</a>
   <table>
     {{range .}}
       <tr>
@@ -42,6 +35,8 @@ func root(w http.ResponseWriter, r *http.Request) {
   c := appengine.NewContext(r)
   q := datastore.NewQuery("Election")
   elections := make([]Election, 0, 10)
+  fmt.Fprintf(w, "<html>")
+  defer fmt.Fprintf(w, "</html>")
   if _, err := q.GetAll(c, &elections); err != nil {
     fmt.Fprintf(w, "Error: %s<br>", err.Error())
     return
@@ -61,6 +56,8 @@ func show(w http.ResponseWriter, r *http.Request) {
   c := appengine.NewContext(r)
   query := datastore.NewQuery("Election")
   it := query.Run(c)
+  fmt.Fprintf(w, "<html>")
+  defer fmt.Fprintf(w, "</html>")
   var e Election
   for _, err := it.Next(&e); err == nil; _, err = it.Next(&e) {
     w.Write([]byte(fmt.Sprintf("Election: (%v)<br>", e)))
