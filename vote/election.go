@@ -146,7 +146,7 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
   }
 
   var cands []Candidate
-  for i := 0; i <= 5; i++ {
+  for i := 0; i <= 9; i++ {
     name := r.FormValue(fmt.Sprintf("cand%d", i))
     if name == "" {
       continue
