@@ -41,7 +41,7 @@ const ballotTemplateHTML = `
   <body>
     {{ $data = .}}
     <form action="/cast_ballot" method="post">
-    <input type="text" hidden name="key" value="{{.Key_str}}">
+    <input type="hidden" name="key" value="{{.Key_str}}"/>
     Election: {{.Title}}<br>
     <table>
     <tr><td>Candidate</td><td colspan=10 align="center"><-Higher - Rank - Lower -></td></td>
@@ -159,7 +159,7 @@ func castBallot(w http.ResponseWriter, r *http.Request) {
     rank_str := r.FormValue(fmt.Sprintf("rank_%d", i))
     rank, err := strconv.ParseInt(rank_str, 10, 32)
     if err != nil || rank < 0 {
-      rank = 0
+      rank = -1
     }
     ordering[i] = int(rank)
   }

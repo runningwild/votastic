@@ -67,7 +67,7 @@ const resultsTemplateHTML = `
     {{ $data := . }}
     {{$data.Election.Title}}<br/>
     Roughly {{$data.Num_votes}} votes cast.<br/>
-    <table>
+    <table border="1">
     {{range $index,$element := $data.Ranks}}
       <tr>
         <td>Rank {{$index}}</td>
@@ -98,6 +98,25 @@ func blurNumber(n int) int {
   return c
 }
 
+func updateGraph(graph [][]int, b *Ballot) {
+  // To make things easy on ourselves we go through and replace any ranks
+  // that are non-positive with one higher than the maximum rank.  This
+  // indicates that the voter preferred all ranked candidates to this one.
+  for i := range b.Ordering {
+    if b.Ordering[i] < 0 {
+      b.Ordering[i] = len(b.Ordering) + 1
+    }
+  }
+  for i := range b.Ordering {
+    for j := range b.Ordering {
+      // Lower is better - like 1st place is better than 2nd place
+      if b.Ordering[i] < b.Ordering[j] {
+        graph[i][j]++
+      }
+    }
+  }
+}
+
 func viewResults(w http.ResponseWriter, r *http.Request) {
   key, err := datastore.DecodeKey(r.FormValue("key"))
   if err != nil {
@@ -125,38 +144,40 @@ func viewResults(w http.ResponseWriter, r *http.Request) {
   }
 
   query := datastore.NewQuery("Ballot")
-  query = query.Ancestor(key).
-    Filter("Viewable <", time.Now()).
-    Order("Viewable").
-    Order("Time")
-
+  query = query.Ancestor(key).Order("User_id")
+    
   it := query.Run(c)
-  var b, pb Ballot
+  var b, latest Ballot
+  var prev_user_id string
   count := 0
+  now := time.Now().UnixNano()
   for _, err := it.Next(&b); err == nil; _, err = it.Next(&b) {
-    if b.User_id == pb.User_id {
-      b = Ballot{}
-      // continue // Don't count more than one ballot from any one user
-    }
-    count++
-    // To make things easy on ourselves we go through and replace any ranks
-    // that are non-positive with one higher than the maximum rank.  This
-    // indicates that the voter preferred all ranked candidates to this one.
-    for i := range b.Ordering {
-      if b.Ordering[i] <= 0 {
-        b.Ordering[i] = len(b.Ordering) + 1
-      }
-    }
-    for i := range b.Ordering {
-      for j := range b.Ordering {
-        // Lower is better - like 1st place is better than 2nd place
-        if b.Ordering[i] < b.Ordering[j] {
-          graph[i][j]++
+    if b.User_id == prev_user_id || prev_user_id == "" {
+      prev_user_id = b.User_id
+      // Unviewable ballots should have no effect on anything
+      if b.Viewable.UnixNano() < now {
+        if latest.User_id == "" || b.Time.UnixNano() > latest.Time.UnixNano() {
+          latest = b
         }
       }
+      b = Ballot{}
+      continue // Don't count more than one ballot from any one user
     }
-    pb = b
+    // We only set the user id if the ballot was viewable, so this is
+    // sufficient to check its validity.
+    if latest.User_id != "" {
+      count++
+      updateGraph(graph, &latest)
+    }
+    prev_user_id = b.User_id
     b = Ballot{}
+    latest = Ballot{}
+  }
+  // The last one won't be checked in the loop above so we need to check for
+  // it separately.
+  if latest.Viewable.UnixNano() < now {
+    count++
+    updateGraph(graph, &latest)
   }
 
   for i := range graph {

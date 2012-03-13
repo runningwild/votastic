@@ -100,6 +100,7 @@ var election_html string = `
     Election name: <input type="text" name="title"/><br/>
     Refresh interval:
     <select name="refresh">
+    <option value="1second">1 Second</option>
     <option value="1minute">1 Minute</option>
     <option value="10minute">10 Minutes</option>
     <option value="hour">1 Hour</option>
@@ -111,6 +112,10 @@ var election_html string = `
     Candidate name: <input type="text" name="cand3"/><br/>
     Candidate name: <input type="text" name="cand4"/><br/>
     Candidate name: <input type="text" name="cand5"/><br/>
+    Candidate name: <input type="text" name="cand6"/><br/>
+    Candidate name: <input type="text" name="cand7"/><br/>
+    Candidate name: <input type="text" name="cand8"/><br/>
+    Candidate name: <input type="text" name="cand9"/><br/>
     You may restrict the election to only certain people by entering their email addresses here:</br>
     <textarea name="emails" cols="70" rows="15"></textarea>
     <div><input type="submit" value="Begin the Election"></div>
@@ -156,6 +161,8 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
   var refresh int64
   refresh_str := r.FormValue(fmt.Sprintf("refresh"))
   switch refresh_str {
+  case "1second":
+    refresh = 1
   case "1minute":
     refresh = 60 * 1000 * 1000 * 1000
   case "10minute":
