@@ -85,9 +85,15 @@ func fillBallot(w http.ResponseWriter, r *http.Request) {
   }
 
   if !e.IsUserAllowedToVote(u) {
-    fmt.Fprintf(w, "You have not been listed as a participant in this election.<br/>")
+    http.Error(w, "You have not been listed as a participant in this election.", http.StatusInternalServerError)
     return
   }
+
+  if e.End.UnixNano() < time.Now().UnixNano() {
+    http.Error(w, "Voting for this election has closed.", http.StatusInternalServerError)
+    return
+  }
+
 
   cands, err := e.GetCandidates(c)
   if err != nil {
@@ -145,6 +151,10 @@ func castBallot(w http.ResponseWriter, r *http.Request) {
   err = datastore.Get(c, key, &e)
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+  if e.End.UnixNano() < time.Now().UnixNano() {
+    http.Error(w, "Voting for this election has closed.", http.StatusInternalServerError)
     return
   }
 

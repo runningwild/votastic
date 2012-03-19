@@ -7,6 +7,7 @@ import (
   "fmt"
   "html/template"
   "net/http"
+  "time"
 )
 
 func init() {
@@ -25,6 +26,7 @@ const availableElectionTemplateHTML = `
         <td>{{.Title}}</td>
         <td><a href="/ballot?key={{.Key_str}}">vote</a></td>
         <td><a href="/view_results?key={{.Key_str}}">results</a></td>
+        <td>End: {{.End}}</td>
       </tr>
     {{end}}
   </table>
@@ -33,10 +35,8 @@ const availableElectionTemplateHTML = `
 
 func root(w http.ResponseWriter, r *http.Request) {
   c := appengine.NewContext(r)
-  q := datastore.NewQuery("Election")
+  q := datastore.NewQuery("Election").Filter("End >", time.Now())
   elections := make([]Election, 0, 10)
-  fmt.Fprintf(w, "<html>")
-  defer fmt.Fprintf(w, "</html>")
   if _, err := q.GetAll(c, &elections); err != nil {
     fmt.Fprintf(w, "Error: %s<br>", err.Error())
     return

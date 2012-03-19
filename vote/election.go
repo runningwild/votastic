@@ -8,6 +8,7 @@ import (
   "net/http"
   "time"
   "strings"
+  "strconv"
 )
 
 func init() {
@@ -38,6 +39,9 @@ type Election struct {
 
   // Time when the election was created.
   Time time.Time
+
+  // Time when the election is over
+  End time.Time
 
   // How often the results are updated.  Also indicates how long it might be
   // until a ballot is visible, it could be anywhere from 2 to 3 times the
@@ -100,11 +104,57 @@ var election_html string = `
     Election name: <input type="text" name="title"/><br/>
     Refresh interval:
     <select name="refresh">
-    <option value="1second">1 Second</option>
-    <option value="1minute">1 Minute</option>
-    <option value="10minute">10 Minutes</option>
-    <option value="hour">1 Hour</option>
-    <option value="day">1 Day</option>
+      <option value="1second">1 Second</option>
+      <option value="1minute">1 Minute</option>
+      <option value="10minute">10 Minutes</option>
+      <option value="hour">1 Hour</option>
+      <option value="day">1 Day</option>
+    </select><br/>
+    Minutes: <select name="duration_minutes">
+      <option value="0">0</option>
+      <option value="60">1</option>
+      <option value="120">2</option>
+      <option value="180">3</option>
+      <option value="240">4</option>
+    </select><br/>
+    Hours: <select name="duration_hours">
+      <option value="0">0</option>
+      <option value="3600">1</option>
+      <option value="7200">2</option>
+      <option value="10800">3</option>
+      <option value="14400">4</option>
+      <option value="18000">5</option>
+      <option value="21600">6</option>
+      <option value="25200">7</option>
+      <option value="28800">8</option>
+      <option value="32400">9</option>
+      <option value="36000">10</option>
+      <option value="39600">11</option>
+      <option value="43200">12</option>
+      <option value="46800">13</option>
+      <option value="50400">14</option>
+      <option value="54000">15</option>
+      <option value="57600">16</option>
+      <option value="61200">17</option>
+      <option value="64800">18</option>
+      <option value="68400">19</option>
+      <option value="72000">20</option>
+      <option value="75600">21</option>
+      <option value="79200">22</option>
+      <option value="82800">23</option>
+    </select><br/>
+    Days: <select name="duration_days">
+      <option value="0">0</option>
+      <option value="86400">1</option>
+      <option value="172800">2</option>
+      <option value="259200">3</option>
+      <option value="345600">4</option>
+      <option value="432000">5</option>
+      <option value="518400">6</option>
+      <option value="604800">7</option>
+      <option value="691200">8</option>
+      <option value="777600">9</option>
+      <option value="864000">10</option>
     </select><br/>
     Candidate name: <input type="text" name="cand0"/><br/>
     Candidate name: <input type="text" name="cand1"/><br/>
@@ -159,7 +209,7 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
   }
 
   var refresh int64
-  refresh_str := r.FormValue(fmt.Sprintf("refresh"))
+  refresh_str := r.FormValue("refresh")
   switch refresh_str {
   case "1second":
     refresh = 1
@@ -176,10 +226,22 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
     return
   }
 
+  var duration int64
+  for _, dname := range []string{ "minutes", "hours", "days" } {
+    duration_str := r.FormValue(fmt.Sprintf("duration_%s", dname))
+    n, err := strconv.ParseInt(duration_str, 10, 64)
+    if err == nil {
+      duration += n
+    }
+  }
+
+  now := time.Now()
+  end := now.Add(time.Second * time.Duration(duration))
   e := Election{
     User_id:          u.ID,
     Title:            r.FormValue("title"),
-    Time:             time.Now(),
+    Time:             now,
+    End:              end,
     Num_candidates:   len(cands),
     Refresh_interval: refresh,
     Emails:           strings.Fields(r.FormValue("emails")),
