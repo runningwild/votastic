@@ -170,8 +170,13 @@ func viewResults(w http.ResponseWriter, r *http.Request) {
       updateGraph(graph, &latest)
     }
     prev_user_id = b.User_id
-    b = Ballot{}
     latest = Ballot{}
+    if b.Viewable.UnixNano() < now {
+      if latest.User_id == "" || b.Time.UnixNano() > latest.Time.UnixNano() {
+        latest = b
+      }
+    }
+    b = Ballot{}
   }
   // The last one won't be checked in the loop above so we need to check for
   // it separately.
