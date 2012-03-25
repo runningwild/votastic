@@ -48,6 +48,10 @@ type Election struct {
   // interval.  The value is given in nanoseconds.
   Refresh_interval int64
 
+  // Whether or not to hide the results of the election until after voting has
+  // closed.
+  Hide_results bool
+
   Title string
   Text  string
 
@@ -156,6 +160,7 @@ var election_html string = `
       <option value="777600">9</option>
       <option value="864000">10</option>
     </select><br/>
+    <input type="checkbox" name="hide" value="hide" />Hide the results of the election until it is over.<br />
     Candidate name: <input type="text" name="cand0"/><br/>
     Candidate name: <input type="text" name="cand1"/><br/>
     Candidate name: <input type="text" name="cand2"/><br/>
@@ -235,6 +240,8 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
     }
   }
 
+  hide := (r.FormValue("hide") == "hide")
+
   now := time.Now()
   end := now.Add(time.Second * time.Duration(duration))
   e := Election{
@@ -242,6 +249,7 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
     Title:            r.FormValue("title"),
     Time:             now,
     End:              end,
+    Hide_results:     hide,
     Num_candidates:   len(cands),
     Refresh_interval: refresh,
     Emails:           strings.Fields(r.FormValue("emails")),

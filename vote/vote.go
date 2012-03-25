@@ -15,18 +15,25 @@ func init() {
   http.HandleFunc("/show", show)
 }
 
+type allElectionsData struct {
+  Elections []Election
+  Now       time.Time
+}
+
 var availableElectionTemplate = template.Must(template.New("available_elections").Parse(availableElectionTemplateHTML))
 
 const availableElectionTemplateHTML = `
   <html><body>
   <a href="/election">Create a new Election</a>
   <table>
-    {{range .}}
+    {{range .Elections}}
       <tr>
         <td>{{.Title}}</td>
         <td><a href="/ballot?key={{.Key_str}}">vote</a></td>
         <td><a href="/view_results?key={{.Key_str}}">results</a></td>
-        <td>End: {{.End}}</td>
+        <td>
+          # TODO: Give an ETA or say that the election is over
+        </td>
       </tr>
     {{end}}
   </table>
@@ -35,7 +42,7 @@ const availableElectionTemplateHTML = `
 
 func root(w http.ResponseWriter, r *http.Request) {
   c := appengine.NewContext(r)
-  q := datastore.NewQuery("Election").Filter("End >", time.Now())
+  q := datastore.NewQuery("Election")
   elections := make([]Election, 0, 10)
   if _, err := q.GetAll(c, &elections); err != nil {
     fmt.Fprintf(w, "Error: %s<br>", err.Error())
@@ -43,7 +50,7 @@ func root(w http.ResponseWriter, r *http.Request) {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
-  err := availableElectionTemplate.Execute(w, elections)
+  err := availableElectionTemplate.Execute(w, allElectionsData{elections, time.Now()})
   if err != nil {
     fmt.Fprintf(w, "Error: %s<br>", err.Error())
     return

@@ -132,6 +132,11 @@ func viewResults(w http.ResponseWriter, r *http.Request) {
     return
   }
 
+  if e.Hide_results && e.End.UnixNano() > time.Now().UnixNano() {
+    fmt.Fprintf(w, "Results of this election will not be available until voting is closed.")
+    return
+  }
+
   cands, err := e.GetCandidates(c)
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
