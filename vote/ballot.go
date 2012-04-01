@@ -39,7 +39,7 @@ var ballotTemplate = template.Must(template.New("ballot").Parse(ballotTemplateHT
 
 const ballotTemplateHTML = `
   <body>
-    {{ $data = .}}
+    {{ $data := .}}
     <form action="/cast_ballot" method="post">
     <input type="hidden" name="key" value="{{.Key_str}}"/>
     Election: {{.Title}}<br>
