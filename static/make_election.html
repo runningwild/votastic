@@ -1,0 +1,34 @@
+<form action="/make_election" method="post">
+  Election name: <input type="text" name="title"/><br/>
+  Refresh interval:
+  <select name="refresh">
+    <option value="1second">1 Second</option>
+    <option value="1minute">1 Minute</option>
+    <option value="10minute">10 Minutes</option>
+    <option value="hour">1 Hour</option>
+    <option value="day">1 Day</option>
+  </select><br/>
+  <input type="checkbox" name="hide" value="hide" />Hide the results of the election until it is over.<br />
+  <br/>
+  <input type="radio" name="start" value="now" checked/>Start now:<br/>
+  <input type="radio" name="start" value="specify"/>Start at date/time (YYYY-MM-DD HH:MM): <input type="text" name="start_time"/><br/>
+  <br/>
+  <input type="radio" name="end" value="duration" checked/>End after duration (DD:HH:MM):
+  <input type="text" name="end_duration"/><br/>
+  <input type="radio" name="end" value="specify"/>End at date/time (YYYY-MM-DD HH:MM):
+  <input type="text" name="end_time"/><br/>
+  <br/>
+  Candidate name: <input type="text" name="cand0"/><br/>
+  Candidate name: <input type="text" name="cand1"/><br/>
+  Candidate name: <input type="text" name="cand2"/><br/>
+  Candidate name: <input type="text" name="cand3"/><br/>
+  Candidate name: <input type="text" name="cand4"/><br/>
+  Candidate name: <input type="text" name="cand5"/><br/>
+  Candidate name: <input type="text" name="cand6"/><br/>
+  Candidate name: <input type="text" name="cand7"/><br/>
+  Candidate name: <input type="text" name="cand8"/><br/>
+  Candidate name: <input type="text" name="cand9"/><br/>
+  You may restrict the election to only certain people by entering their email addresses here:</br>
+  <textarea name="emails" cols="70" rows="15"></textarea>
+  <div><input type="submit" value="Begin the Election"></div>
+</form>

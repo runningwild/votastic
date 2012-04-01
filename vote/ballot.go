@@ -89,7 +89,14 @@ func fillBallot(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  if e.End.UnixNano() < time.Now().UnixNano() {
+  now := time.Now().UnixNano()
+
+  if now < e.Time.UnixNano() {
+    http.Error(w, "Voting for this election has not begun yet.", http.StatusInternalServerError)
+    return
+  }
+
+  if e.End.UnixNano() < now {
     http.Error(w, "Voting for this election has closed.", http.StatusInternalServerError)
     return
   }
@@ -153,10 +160,24 @@ func castBallot(w http.ResponseWriter, r *http.Request) {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
-  if e.End.UnixNano() < time.Now().UnixNano() {
+
+  if !e.IsUserAllowedToVote(u) {
+    http.Error(w, "You have not been listed as a participant in this election.", http.StatusInternalServerError)
+    return
+  }
+
+  now := time.Now().UnixNano()
+
+  if now < e.Time.UnixNano() {
+    http.Error(w, "Voting for this election has not begun yet.", http.StatusInternalServerError)
+    return
+  }
+
+  if e.End.UnixNano() < now {
     http.Error(w, "Voting for this election has closed.", http.StatusInternalServerError)
     return
   }
+
 
   cands, err := e.GetCandidates(c)
   if err != nil {
@@ -178,7 +199,6 @@ func castBallot(w http.ResponseWriter, r *http.Request) {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
-  now := time.Now().UnixNano()
   viewable := now + blind + e.Refresh_interval
   viewable = viewable - (viewable % e.Refresh_interval)
   b := Ballot{

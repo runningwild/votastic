@@ -5,10 +5,10 @@ import (
   "appengine/datastore"
   "appengine/user"
   "fmt"
+  "io/ioutil"
   "net/http"
   "time"
   "strings"
-  "strconv"
 )
 
 func init() {
@@ -103,85 +103,16 @@ func (e *Election) GetCandidates(c appengine.Context) ([]Candidate, error) {
   return cands, nil
 }
 
-var election_html string = `
-  <form action="/make_election" method="post">
-    Election name: <input type="text" name="title"/><br/>
-    Refresh interval:
-    <select name="refresh">
-      <option value="1second">1 Second</option>
-      <option value="1minute">1 Minute</option>
-      <option value="10minute">10 Minutes</option>
-      <option value="hour">1 Hour</option>
-      <option value="day">1 Day</option>
-    </select><br/>
-    Minutes: <select name="duration_minutes">
-      <option value="0">0</option>
-      <option value="60">1</option>
-      <option value="120">2</option>
-      <option value="180">3</option>
-      <option value="240">4</option>
-    </select><br/>
-    Hours: <select name="duration_hours">
-      <option value="0">0</option>
-      <option value="3600">1</option>
-      <option value="7200">2</option>
-      <option value="10800">3</option>
-      <option value="14400">4</option>
-      <option value="18000">5</option>
-      <option value="21600">6</option>
-      <option value="25200">7</option>
-      <option value="28800">8</option>
-      <option value="32400">9</option>
-      <option value="36000">10</option>
-      <option value="39600">11</option>
-      <option value="43200">12</option>
-      <option value="46800">13</option>
-      <option value="50400">14</option>
-      <option value="54000">15</option>
-      <option value="57600">16</option>
-      <option value="61200">17</option>
-      <option value="64800">18</option>
-      <option value="68400">19</option>
-      <option value="72000">20</option>
-      <option value="75600">21</option>
-      <option value="79200">22</option>
-      <option value="82800">23</option>
-    </select><br/>
-    Days: <select name="duration_days">
-      <option value="0">0</option>
-      <option value="86400">1</option>
-      <option value="172800">2</option>
-      <option value="259200">3</option>
-      <option value="345600">4</option>
-      <option value="432000">5</option>
-      <option value="518400">6</option>
-      <option value="604800">7</option>
-      <option value="691200">8</option>
-      <option value="777600">9</option>
-      <option value="864000">10</option>
-    </select><br/>
-    <input type="checkbox" name="hide" value="hide" />Hide the results of the election until it is over.<br />
-    Candidate name: <input type="text" name="cand0"/><br/>
-    Candidate name: <input type="text" name="cand1"/><br/>
-    Candidate name: <input type="text" name="cand2"/><br/>
-    Candidate name: <input type="text" name="cand3"/><br/>
-    Candidate name: <input type="text" name="cand4"/><br/>
-    Candidate name: <input type="text" name="cand5"/><br/>
-    Candidate name: <input type="text" name="cand6"/><br/>
-    Candidate name: <input type="text" name="cand7"/><br/>
-    Candidate name: <input type="text" name="cand8"/><br/>
-    Candidate name: <input type="text" name="cand9"/><br/>
-    You may restrict the election to only certain people by entering their email addresses here:</br>
-    <textarea name="emails" cols="70" rows="15"></textarea>
-    <div><input type="submit" value="Begin the Election"></div>
-  </form>
-`
-
 func election(w http.ResponseWriter, r *http.Request) {
   htmlWrapBegin(w)
   defer htmlWrapEnd(w)
   if _, _, logged_in := promptLogin(w, r); logged_in {
-    fmt.Fprintf(w, election_html)
+    data, err := ioutil.ReadFile("static/make_election.html")
+    if err != nil {
+      fmt.Fprintf(w, "Error: %v", err)
+      return
+    }
+    w.Write(data)
   }
 }
 
@@ -231,24 +162,57 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  var duration int64
-  for _, dname := range []string{ "minutes", "hours", "days" } {
-    duration_str := r.FormValue(fmt.Sprintf("duration_%s", dname))
-    n, err := strconv.ParseInt(duration_str, 10, 64)
-    if err == nil {
-      duration += n
+  start_kind := r.FormValue("start")
+  var start_time int64
+  switch start_kind {
+  case "now":
+    start_time = time.Now().UnixNano()
+
+  case "specify":
+    t, err := time.Parse("2006-01-02 15:04", r.FormValue("start_time"))
+    if err != nil {
+      http.Error(w, fmt.Sprintf("Internal error: %v", err), http.StatusInternalServerError)
+      return
     }
+    start_time = t.UnixNano()
+
+  default:
+    http.Error(w, fmt.Sprintf("Internal error (start default)"), http.StatusInternalServerError)
+    return
+  }
+
+  end_kind := r.FormValue("end")
+  var end_time int64
+  switch end_kind {
+  case "duration":
+    var h, m, s time.Duration
+    n, err := fmt.Sscanf(r.FormValue("end_duration"), "%d:%d:%d", &h, &m, &s)
+    if n != 3 || err != nil {
+      http.Error(w, fmt.Sprintf("Internal error: %v", err), http.StatusInternalServerError)
+      return
+    }
+    end_time = start_time + int64(h * time.Hour + m * time.Minute + s * time.Second)
+
+  case "specify":
+    t, err := time.Parse("2006-01-02 15:04", r.FormValue("end_time"))
+    if err != nil {
+      http.Error(w, fmt.Sprintf("Internal error: %v", err), http.StatusInternalServerError)
+      return
+    }
+    end_time = t.UnixNano()
+
+  default:
+    http.Error(w, fmt.Sprintf("Internal error (end default)"), http.StatusInternalServerError)
+    return
   }
 
   hide := (r.FormValue("hide") == "hide")
 
-  now := time.Now()
-  end := now.Add(time.Second * time.Duration(duration))
   e := Election{
     User_id:          u.ID,
     Title:            r.FormValue("title"),
-    Time:             now,
-    End:              end,
+    Time:             time.Unix(0, start_time),
+    End:              time.Unix(0, end_time),
     Hide_results:     hide,
     Num_candidates:   len(cands),
     Refresh_interval: refresh,
