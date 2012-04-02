@@ -6,6 +6,7 @@ import (
   "appengine/user"
   "fmt"
   "io/ioutil"
+  "html/template"
   "net/http"
   "time"
   "strings"
@@ -185,13 +186,13 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
   var end_time int64
   switch end_kind {
   case "duration":
-    var h, m, s time.Duration
-    n, err := fmt.Sscanf(r.FormValue("end_duration"), "%d:%d:%d", &h, &m, &s)
+    var d, h, m time.Duration
+    n, err := fmt.Sscanf(r.FormValue("end_duration"), "%d:%d:%d", &d, &h, &m)
     if n != 3 || err != nil {
       http.Error(w, fmt.Sprintf("Internal error: %v", err), http.StatusInternalServerError)
       return
     }
-    end_time = start_time + int64(h * time.Hour + m * time.Minute + s * time.Second)
+    end_time = start_time + int64((d * 24 + m) * time.Hour + m * time.Minute)
 
   case "specify":
     t, err := time.Parse("2006-01-02 15:04", r.FormValue("end_time"))
@@ -246,6 +247,21 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
   http.Redirect(w, r, fmt.Sprintf("/view_election?key=%s", key.Encode()), http.StatusFound)
 }
 
+var viewElectionTemplate = template.Must(template.New("view_election").Parse(viewElectionTemplateHTML))
+
+const viewElectionTemplateHTML = `
+  <body>
+    Election: {{.Election}}<br/>
+    {{range $index,$cand := .Candidates}}
+    Candidate {{$index}}: {{$cand.Name}}<br/>
+    {{end}}
+  </body>
+`
+type viewElectionData struct {
+  Election   string
+  Candidates []Candidate
+}
+
 func viewElection(w http.ResponseWriter, r *http.Request) {
   htmlWrapBegin(w)
   defer htmlWrapEnd(w)
@@ -261,15 +277,20 @@ func viewElection(w http.ResponseWriter, r *http.Request) {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
-  fmt.Fprintf(w, "Election: %s<br>", e.Title)
   cands, err := e.GetCandidates(c)
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
-  for i := range cands {
-    fmt.Fprintf(w, "Candidate(%d): %s<br>", i, cands[i].Name)
+  data := viewElectionData{
+    Election:   e.Title,
+    Candidates: cands,
   }
-  fmt.Fprintf(w, "Emails(%d): %v<br/>", len(e.Emails), e.Emails)
-  fmt.Fprintf(w, "<a href=\"/ballot?key=%s\">Cast your vote here!</a>", key.Encode())
+  viewElectionTemplate.Execute(w, data)
+  // fmt.Fprintf(w, "Election: %s<br>", e.Title)
+  // for i := range cands {
+  //   fmt.Fprintf(w, "Candidate(%d): %s<br>", i, cands[i].Name)
+  // }
+  // fmt.Fprintf(w, "Emails(%d): %v<br/>", len(e.Emails), e.Emails)
+  // fmt.Fprintf(w, "<a href=\"/ballot?key=%s\">Cast your vote here!</a>", key.Encode())
 }
