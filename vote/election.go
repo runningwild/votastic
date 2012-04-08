@@ -22,7 +22,9 @@ func init() {
 type Candidate struct {
   Name  string
   Blurb string
-  Image []byte
+
+  // The image of the candidate is stored on disk so we can send links to it.
+  Image appengine.BlobKey
 
   // Index is just so that we have a well-defined ordering among Candidates,
   // independent of anything the datastore does.
@@ -138,8 +140,20 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
     if name == "" {
       continue
     }
+    file, _, err := r.FormFile(fmt.Sprintf("image%d", i))
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+      return
+    }
+    image, err := processImage(c, file)
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+      return
+    }
     cand := Candidate{
       Name:  name,
+      Blurb: r.FormValue(fmt.Sprintf("blurb%d", i)),
+      Image: image,
       Index: i,
     }
     cands = append(cands, cand)

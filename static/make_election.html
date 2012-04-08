@@ -1,4 +1,4 @@
-<form action="/make_election" method="post">
+<form action="/make_election" enctype="multipart/form-data" method="post">
   Election name: <input type="text" name="title"/><br/>
   Refresh interval:
   <select name="refresh">
@@ -18,16 +18,56 @@
   <input type="radio" name="end" value="specify"/>End at date/time (YYYY-MM-DD HH:MM):
   <input type="text" name="end_time"/><br/>
   <br/>
-  Candidate name: <input type="text" name="cand0"/><br/>
-  Candidate name: <input type="text" name="cand1"/><br/>
-  Candidate name: <input type="text" name="cand2"/><br/>
-  Candidate name: <input type="text" name="cand3"/><br/>
-  Candidate name: <input type="text" name="cand4"/><br/>
-  Candidate name: <input type="text" name="cand5"/><br/>
-  Candidate name: <input type="text" name="cand6"/><br/>
-  Candidate name: <input type="text" name="cand7"/><br/>
-  Candidate name: <input type="text" name="cand8"/><br/>
-  Candidate name: <input type="text" name="cand9"/><br/>
+  Candidate 0:<br/>
+  Name: <input type="text" name="cand0"/><br/>
+  Text: <textarea name="blurb0" cols="70" rows="5"></textarea><br/>
+  Image (png or jpg): <input type="file" name="image0" size="40"/><br/>
+  <br/>
+  Candidate 1:<br/>
+  Name: <input type="text" name="cand1"/><br/>
+  Text: <textarea name="blurb1" cols="70" rows="5"></textarea><br/>
+  Image (png or jpg): <input type="file" name="image1" size="40"/><br/>
+  <br/>
+  Candidate 2:<br/>
+  Name: <input type="text" name="cand2"/><br/>
+  Text: <textarea name="blurb2" cols="70" rows="5"></textarea><br/>
+  Image (png or jpg): <input type="file" name="image2" size="40"/><br/>
+  <br/>
+  Candidate 3:<br/>
+  Name: <input type="text" name="cand3"/><br/>
+  Text: <textarea name="blurb3" cols="70" rows="5"></textarea><br/>
+  Image (png or jpg): <input type="file" name="image3" size="40"/><br/>
+  <br/>
+  Candidate 4:<br/>
+  Name: <input type="text" name="cand4"/><br/>
+  Text: <textarea name="blurb4" cols="70" rows="5"></textarea><br/>
+  Image (png or jpg): <input type="file" name="image4" size="40"/><br/>
+  <br/>
+  Candidate 5:<br/>
+  Name: <input type="text" name="cand5"/><br/>
+  Text: <textarea name="blurb5" cols="70" rows="5"></textarea><br/>
+  Image (png or jpg): <input type="file" name="image5" size="40"/><br/>
+  <br/>
+  Candidate 6:<br/>
+  Name: <input type="text" name="cand6"/><br/>
+  Text: <textarea name="blurb6" cols="70" rows="5"></textarea><br/>
+  Image (png or jpg): <input type="file" name="image6" size="40"/><br/>
+  <br/>
+  Candidate 7:<br/>
+  Name: <input type="text" name="cand7"/><br/>
+  Text: <textarea name="blurb7" cols="70" rows="5"></textarea><br/>
+  Image (png or jpg): <input type="file" name="image7" size="40"/><br/>
+  <br/>
+  Candidate 8:<br/>
+  Name: <input type="text" name="cand8"/><br/>
+  Text: <textarea name="blurb8" cols="70" rows="5"></textarea><br/>
+  Image (png or jpg): <input type="file" name="image8" size="40"/><br/>
+  <br/>
+  Candidate 9:<br/>
+  Name: <input type="text" name="cand9"/><br/>
+  Text: <textarea name="blurb9" cols="70" rows="5"></textarea><br/>
+  Image (png or jpg): <input type="file" name="image9" size="40"/><br/>
+  <br/>
   You may restrict the election to only certain people by entering their email addresses here:</br>
   <textarea name="emails" cols="70" rows="15"></textarea>
   <div><input type="submit" value="Begin the Election"></div>

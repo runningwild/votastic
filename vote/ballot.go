@@ -48,6 +48,7 @@ const ballotTemplateHTML = `
     {{range $index,$element := .Candidates}}
       <tr>
         <td>{{.Name}}</td>
+        <td><img src="/serve/image.jpg?blobKey={{.Image}}"></img></td>
         {{range $rank_index,$rank := $data.Candidates}}
           <td><input type="radio" name="rank_{{$index}}" value="{{$rank_index}}" {{if index $data.Ranks $index $rank_index}}checked{{end}} /></td>
         {{end}}
