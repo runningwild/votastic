@@ -140,15 +140,14 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
     if name == "" {
       continue
     }
+    var image appengine.BlobKey
     file, _, err := r.FormFile(fmt.Sprintf("image%d", i))
-    if err != nil {
-      http.Error(w, err.Error(), http.StatusInternalServerError)
-      return
-    }
-    image, err := processImage(c, file)
-    if err != nil {
-      http.Error(w, err.Error(), http.StatusInternalServerError)
-      return
+    if err == nil {
+      image, _ = processImage(c, file)
+      // if err != nil {
+      //   http.Error(w, err.Error(), http.StatusInternalServerError)
+      //   return
+      // }
     }
     cand := Candidate{
       Name:  name,
@@ -206,7 +205,7 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
       http.Error(w, fmt.Sprintf("Internal error: %v", err), http.StatusInternalServerError)
       return
     }
-    end_time = start_time + int64((d * 24 + m) * time.Hour + m * time.Minute)
+    end_time = start_time + int64((d * 24 + h) * time.Hour + m * time.Minute)
 
   case "specify":
     t, err := time.Parse("2006-01-02 15:04", r.FormValue("end_time"))
