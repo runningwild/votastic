@@ -97,7 +97,7 @@ func viewOverallStatus(w http.ResponseWriter, r *http.Request, c appengine.Conte
   query = datastore.NewQuery("Ballot").Filter("User_id =", u.ID).Order("Time")
   it = query.Run(c)
   var b Ballot
-  for _, err := it.Next(&b); err == nil; _, err = it.Next(&e) {
+  for _, err := it.Next(&b); err == nil; _, err = it.Next(&b) {
     datastore.Get(c, b.Election_key, &e)
     data.Voted = append(data.Voted, e)
   }
