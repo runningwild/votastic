@@ -33,6 +33,9 @@ type Ballot struct {
 
   // The time.UnixNano() at which this Ballot should be counted.
   Viewable time.Time
+
+  // Key of the election that this ballot belongs to
+  Election_key *datastore.Key
 }
 
 var ballotTemplate = template.Must(template.New("ballot").Parse(ballotTemplateHTML))
@@ -92,7 +95,7 @@ func fillBallot(w http.ResponseWriter, r *http.Request) {
 
   now := time.Now().UnixNano()
 
-  if now < e.Time.UnixNano() {
+  if now < e.Start.UnixNano() {
     http.Error(w, "Voting for this election has not begun yet.", http.StatusInternalServerError)
     return
   }
@@ -169,7 +172,7 @@ func castBallot(w http.ResponseWriter, r *http.Request) {
 
   now := time.Now().UnixNano()
 
-  if now < e.Time.UnixNano() {
+  if now < e.Start.UnixNano() {
     http.Error(w, "Voting for this election has not begun yet.", http.StatusInternalServerError)
     return
   }
@@ -203,10 +206,11 @@ func castBallot(w http.ResponseWriter, r *http.Request) {
   viewable := now + blind + e.Refresh_interval
   viewable = viewable - (viewable % e.Refresh_interval)
   b := Ballot{
-    User_id:  u.ID,
-    Ordering: ordering,
-    Time:     time.Unix(0, now),
-    Viewable: time.Unix(0, viewable),
+    User_id:      u.ID,
+    Ordering:     ordering,
+    Time:         time.Unix(0, now),
+    Viewable:     time.Unix(0, viewable),
+    Election_key: key,
   }
   _, err = datastore.Put(c, datastore.NewIncompleteKey(c, "Ballot", key), &b)
   if err != nil {

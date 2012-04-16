@@ -33,15 +33,14 @@ type Candidate struct {
 
 type Election struct {
   // key.Encode() for the key representing this Election.  This is here so
-  // that we can embed it into forms easily.  This isn't saved into the DB,
-  // it's just there so that we can set it before executing templates.
+  // that we can embed it into forms easily.
   Key_str string
 
   // User.ID of the user that created this election.
   User_id string
 
-  // Time when the election was created.
-  Time time.Time
+  // Time when the election begins.
+  Start time.Time
 
   // Time when the election is over
   End time.Time
@@ -225,7 +224,7 @@ func makeElection(w http.ResponseWriter, r *http.Request) {
   e := Election{
     User_id:          u.ID,
     Title:            r.FormValue("title"),
-    Time:             time.Unix(0, start_time),
+    Start:            time.Unix(0, start_time),
     End:              time.Unix(0, end_time),
     Hide_results:     hide,
     Num_candidates:   len(cands),

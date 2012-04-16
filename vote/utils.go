@@ -2,13 +2,14 @@ package vote
 
 import (
   "fmt"
-  "io"
+  "net/http"
 )
 
-func htmlWrapBegin(w io.Writer) {
+func htmlWrapBegin(w http.ResponseWriter) {
+  w.Header().Add("content-type", "text/html; charset=utf-8")
   fmt.Fprintf(w, "<html>")
 }
 
-func htmlWrapEnd(w io.Writer) {
+func htmlWrapEnd(w http.ResponseWriter) {
   fmt.Fprintf(w, "</html>")
 }
